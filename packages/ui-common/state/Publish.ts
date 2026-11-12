@@ -16,7 +16,6 @@ limitations under the License.
 
 import {create} from "zustand"
 
-import {useEnvironmentStore} from "./Environment"
 import {useSettingsStore} from "./Settings"
 import {PublishedNetwork} from "../controller/publish/Publish"
 
@@ -122,10 +121,8 @@ useSettingsStore.subscribe(({settings: {publish}}, {settings: {publish: previous
 })
 
 /**
- * The publish server to use: the one set in Settings, otherwise the default from the environment.
+ * The publish server to use: the one explicitly saved in Settings, or null if the user hasn't saved one yet.
+ * Deliberately does not fall back to the environment's default server, so publishing stays off until the user
+ * opts in (e.g. by clicking "Default" in Settings and saving) rather than silently using it.
  */
-export const usePublishServerUrl = (): string | null => {
-    const settingsServerUrl = useSettingsStore((state) => state.settings.publish.serverUrl)
-    const defaultServerUrl = useEnvironmentStore((state) => state.publishServerUrl)
-    return settingsServerUrl ?? defaultServerUrl
-}
+export const usePublishServerUrl = (): string | null => useSettingsStore((state) => state.settings.publish.serverUrl)

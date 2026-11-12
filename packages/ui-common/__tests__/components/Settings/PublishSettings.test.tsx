@@ -56,15 +56,17 @@ describe("PublishSettings", () => {
             useEnvironmentStore.setState({publishServerUrl: `https://${DEFAULT_SERVER_HOST}`})
         })
 
-        it("should fill in the default server when none is saved", () => {
+        it("should leave the server field empty when none is saved, even though a default is configured", () => {
             renderSettings()
 
-            expect(screen.getByRole("textbox", {name: PUBLISH_SERVER_HOST_LABEL})).toHaveValue(DEFAULT_SERVER_HOST)
+            expect(screen.getByRole("textbox", {name: PUBLISH_SERVER_HOST_LABEL})).toHaveValue("")
         })
 
-        it("should test the default server shown in the field", async () => {
+        it("should test the default server once Default is clicked to fill it in", async () => {
             vi.mocked(checkHealth).mockResolvedValue(true)
             renderSettings()
+            const defaultButton = screen.getByRole("button", {name: DEFAULT_PUBLISH_SERVER_LABEL})
+            await user.click(defaultButton)
             const testButton = screen.getByRole("button", {name: TEST_PUBLISH_SERVER_LABEL})
 
             await user.click(testButton)
@@ -73,7 +75,7 @@ describe("PublishSettings", () => {
             await waitFor(() => expect(getStatusLight()).toHaveAttribute("data-status", "green"))
         })
 
-        it("should put the default server back when Default is clicked", async () => {
+        it("should put the default server into the field when Default is clicked", async () => {
             useSettingsStore.getState().updateSettings({publish: {serverUrl: `https://${SERVER_HOST}`}})
             renderSettings()
             const defaultButton = screen.getByRole("button", {name: DEFAULT_PUBLISH_SERVER_LABEL})
@@ -84,7 +86,7 @@ describe("PublishSettings", () => {
             expect(defaultButton).toBeDisabled()
         })
 
-        it("should follow the default again once the default server is saved", async () => {
+        it("should save the default server explicitly, as an opt-in, when Default is clicked and saved", async () => {
             useSettingsStore.getState().updateSettings({publish: {serverUrl: `https://${SERVER_HOST}`}})
             renderSettings()
             const defaultButton = screen.getByRole("button", {name: DEFAULT_PUBLISH_SERVER_LABEL})
@@ -92,7 +94,7 @@ describe("PublishSettings", () => {
 
             await save()
 
-            expect(getPublishSettings().serverUrl).toBeNull()
+            expect(getPublishSettings().serverUrl).toBe(`https://${DEFAULT_SERVER_HOST}`)
         })
     })
 

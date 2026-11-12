@@ -66,10 +66,11 @@ export const PublishSettings: FC<PublishSettingsProps> = ({id}) => {
     const savedServerUrl = useSettingsStore((state) => state.settings.publish.serverUrl) ?? ""
     const savedOrgName = useSettingsStore((state) => state.settings.publish.orgName) ?? ""
     const defaultServerUrl = useEnvironmentStore((state) => state.publishServerUrl) ?? ""
-    const effectiveServerUrl = savedServerUrl || defaultServerUrl
 
-    const [protocol, setProtocol] = useState<Protocol>(effectiveServerUrl.startsWith("http://") ? "http" : "https")
-    const [hostInput, setHostInput] = useState(stripProtocol(effectiveServerUrl))
+    // Starts empty when no server has been saved: the default server is shown only once the user opts in by
+    // clicking "Default" below, rather than being pre-filled (and usable) without any action on their part.
+    const [protocol, setProtocol] = useState<Protocol>(savedServerUrl.startsWith("http://") ? "http" : "https")
+    const [hostInput, setHostInput] = useState(stripProtocol(savedServerUrl))
     const [isServerReachable, setIsServerReachable] = useState<boolean | null>(null)
     const [orgNameInput, setOrgNameInput] = useState(savedOrgName)
     const savedCheckmark = useCheckmarkFade()
@@ -78,7 +79,7 @@ export const PublishSettings: FC<PublishSettingsProps> = ({id}) => {
     const serverUrl = normalized.host ? `${normalized.protocol}://${normalized.host}` : ""
     const orgName = orgNameInput.trim()
 
-    const hasChanges = serverUrl !== effectiveServerUrl || orgName !== savedOrgName
+    const hasChanges = serverUrl !== savedServerUrl || orgName !== savedOrgName
 
     const handleHostChange = (host: string) => {
         setHostInput(host)
@@ -97,9 +98,9 @@ export const PublishSettings: FC<PublishSettingsProps> = ({id}) => {
 
     const handleSave = () => {
         savedCheckmark.trigger()
-        // Only save a server that differs from the default, so a change to the default still applies
-        const serverOverride = serverUrl && serverUrl !== defaultServerUrl ? serverUrl : null
-        updateSettings({publish: {serverUrl: serverOverride, orgName: orgName || null}})
+        // Save exactly what's in the field, even if it matches the default: publishing only ever uses a server
+        // the user explicitly saved, so clicking "Default" and then Save is how they opt in to using it.
+        updateSettings({publish: {serverUrl: serverUrl || null, orgName: orgName || null}})
     }
 
     return (

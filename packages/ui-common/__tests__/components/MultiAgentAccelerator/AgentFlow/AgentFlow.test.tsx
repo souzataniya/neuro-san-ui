@@ -1800,12 +1800,15 @@ describe("AgentFlow", () => {
             await screen.findByRole("button", {name: "Publish"})
         })
 
-        it("Should offer to publish with the default publish server when none is set in Settings", async () => {
+        it("Should not offer to publish with the environment's default server until it's saved in Settings", () => {
             useSettingsStore.getState().updateSettings({publish: {serverUrl: null}})
             useEnvironmentStore.setState({publishServerUrl: "https://default-publish.test"})
             renderPublishableNetwork()
 
-            await screen.findByRole("button", {name: "Publish"})
+            // First proves the bar, where the button would appear, is on screen
+            screen.getByText(PUBLISHABLE_NETWORK_NAME)
+
+            expect(screen.queryByRole("button", {name: "Publish"})).not.toBeInTheDocument()
         })
 
         it("Should not offer to publish until there's a publish server", () => {
