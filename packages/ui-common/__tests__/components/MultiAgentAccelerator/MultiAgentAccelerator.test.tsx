@@ -1718,6 +1718,58 @@ describe("MultiAgentAccelerator", () => {
             )
         })
 
+        it("reserves extra top clearance in the safe area for the measured height of the API keys alert", async () => {
+            // Make only the alert report a height; everything else uses its real (zero, in jsdom) rect.
+            const original = Element.prototype.getBoundingClientRect
+            const ALERT_HEIGHT = 48
+            /* eslint-disable unicorn/no-this-outside-of-class */
+            const spy = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
+                this: Element
+            ) {
+                return this.id === "llm-chat-missing-api-keys-alert"
+                    ? ({height: ALERT_HEIGHT} as DOMRect)
+                    : original.call(this)
+            })
+            /* eslint-enable unicorn/no-this-outside-of-class */
+
+            try {
+                vi.mocked(getAgentFunction).mockResolvedValue({
+                    function: {
+                        sly_data_schema: {
+                            type: "object",
+                            properties: {
+                                llm_config: {
+                                    type: "object",
+                                    properties: {[LLM_PROVIDER_API_KEY_FIELD["OpenAI"]]: {type: "string"}},
+                                },
+                            },
+                            required: ["llm_config"],
+                        } satisfies z.infer<typeof BYOK>,
+                    },
+                } satisfies FunctionResponse)
+
+                renderMultiAgentAccelerator()
+
+                const safeAreaBefore = (agentFlowMock.mock.calls.at(-1)?.[0] as Partial<AgentFlowProps>).safeArea
+
+                await act(async () => {
+                    setSelectedNetwork(`${TEST_AGENTS_FOLDER}/${TEST_AGENT_MATH_GUY}`)
+                })
+
+                expect(await screen.findByText(/API key\(s\) required/u)).toBeInTheDocument()
+
+                // AgentFlow's safe area grows by the alert's real measured height (plus the 14px workspace gap),
+                // not a hardcoded guess
+                const WORKSPACE_GAP = 14
+                await waitFor(() => {
+                    const lastCall = agentFlowMock.mock.calls.at(-1)?.[0] as Partial<AgentFlowProps>
+                    expect(lastCall.safeArea?.top).toBe((safeAreaBefore?.top ?? 0) + ALERT_HEIGHT + WORKSPACE_GAP)
+                })
+            } finally {
+                spy.mockRestore()
+            }
+        })
+
         it("passes extraSlyData through to AgentFlow when present", async () => {
             useTempNetworksStore.setState({tempNetworks: [tempNetworkWithDefinition]})
 

@@ -916,6 +916,40 @@ export const MultiAgentAccelerator: FC<MultiAgentAcceleratorProps> = ({
 
     const hasMissingApiKeys = getMissingApiKeys().size > 0
 
+    const [missingApiKeysAlertHeight, setMissingApiKeysAlertHeight] = useState(0)
+
+    // Measure the "missing API keys" alert's rendered height (it can wrap to more than one line depending on how
+    // many providers are missing), so the graph can reserve enough top clearance to avoid the alert overlapping
+    // its topmost nodes. Queried by id rather than a ref since MUIAlert doesn't forward one.
+    useEffect(() => {
+        if (!hasMissingApiKeys) {
+            setMissingApiKeysAlertHeight(0)
+            return undefined
+        }
+
+        const element = document.getElementById("llm-chat-missing-api-keys-alert")
+        if (!element) return undefined
+
+        const resizeObserver = new ResizeObserver(([entry]) => {
+            setMissingApiKeysAlertHeight(entry.contentRect.height)
+        })
+        resizeObserver.observe(element)
+
+        return () => {
+            resizeObserver.disconnect()
+        }
+    }, [hasMissingApiKeys])
+
+    // The graph's safe area, built on top of the general one (navbar / panels): also keeps the topmost nodes clear
+    // of the "missing API keys" alert, which floats over the canvas at the same top offset as the HUD.
+    const canvasSafeArea: CanvasSafeArea = useMemo(
+        () => ({
+            ...safeArea,
+            top: safeArea.top + (missingApiKeysAlertHeight > 0 ? missingApiKeysAlertHeight + WORKSPACE_GAP : 0),
+        }),
+        [missingApiKeysAlertHeight, safeArea]
+    )
+
     const getLeftPanel = () => (
         <Panel
             collapsible={true}
@@ -993,7 +1027,7 @@ export const MultiAgentAccelerator: FC<MultiAgentAcceleratorProps> = ({
                         networkId={isSelectedNetworkTemporary ? selectedNetwork : ""}
                         neuroSanURL={neuroSanURL}
                         onSaveAgent={onSaveAgent}
-                        safeArea={safeArea}
+                        safeArea={canvasSafeArea}
                         setIsEditingNetwork={setIsEditingNetwork}
                         thoughtBubbleEdges={thoughtBubbleEdges}
                         setSelectedNetwork={changeSelectedNetwork}
